@@ -289,10 +289,16 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 .filtro[aria-pressed="true"]{background:var(--nero);color:var(--carta);border-color:var(--nero)}
 .filtro .punto{width:9px;height:9px;display:inline-block;border:1px solid currentColor}
 .voci{display:flex;flex-direction:column;gap:0;border-top:2px solid var(--nero)}
-.voce{padding:16px 0;border-bottom:1px solid var(--bordo);display:grid;gap:6px}
+.voce{padding:16px 0 16px 12px;border-bottom:1px solid var(--bordo);
+  border-left:4px solid transparent;display:grid;gap:6px;
+  transition:border-color .3s ease,background .3s ease}
+.voce.accesa{border-left-color:var(--magenta);background:var(--carta-2)}
 .voce .cima{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
 .voce .vizio{font-family:var(--font-etichetta);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:var(--grigio)}
-.voce .num{font-family:var(--font-etichetta);font-size:10.5px;font-weight:600;color:var(--grigio-2);font-variant-numeric:tabular-nums}
+.voce .num{font-family:var(--font-etichetta);font-size:10.5px;font-weight:600;
+  color:var(--grigio-2);font-variant-numeric:tabular-nums;text-decoration:none;white-space:nowrap}
+a.num:hover{color:var(--nero);text-decoration:underline;text-underline-offset:3px}
+a.num:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 .voce .rovescio{
   font-family:var(--font-display);font-weight:700;font-size:clamp(23px,5.6vw,29px);
   line-height:1.08;letter-spacing:-.025em;display:flex;align-items:baseline;gap:9px;text-wrap:pretty;
@@ -300,6 +306,24 @@ button:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 .voce .segno{width:11px;height:11px;flex:0 0 11px;border:1px solid var(--nero);translate:0 -2px}
 .voce .glossa{margin:0;font-size:15.5px;line-height:1.5;color:var(--grigio);max-width:none}
 .voce .varianti{font-size:13.5px;color:var(--grigio-2)}
+.voce button.lemma{
+  -webkit-appearance:none;appearance:none;border:0;background:none;padding:0;margin:0;
+  min-height:0;width:100%;text-align:left;color:inherit;text-transform:none;
+  cursor:pointer;transition:none;border-radius:0}
+.voce button.lemma:hover{background:none;color:inherit}
+.voce button.lemma:hover .richiamo{color:var(--magenta);border-color:var(--magenta)}
+.voce button.lemma:focus-visible{outline:3px solid var(--cyan);outline-offset:3px}
+.richiamo{
+  font-family:var(--font-etichetta);font-size:10px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--grigio-2);white-space:nowrap;
+  border:1px solid var(--bordo);padding:3px 7px;margin-left:auto;align-self:center}
+.carta button.copia-voce{
+  -webkit-appearance:none;appearance:none;min-height:0;border-radius:0;
+  font-family:var(--font-etichetta);font-size:10px;font-weight:600;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--grigio-2);background:none;
+  border:1px solid var(--bordo);padding:4px 8px;margin-left:auto;cursor:pointer;transition:none}
+.carta button.copia-voce:hover{background:none;color:var(--magenta);border-color:var(--magenta)}
+.carta button.copia-voce:focus-visible{outline:3px solid var(--cyan);outline-offset:2px}
 .nulla{padding:26px 0;color:var(--grigio)}
 
 /* ---------- officina ---------- */
@@ -587,6 +611,50 @@ var CODE = ["e portati via le tue liberatorie in duplice copia.","con appuntamen
             "salvo diversa comunicazione."];
 
 var N = VOCI.length;
+
+/* ---------- ancore e testo condivisibile per singola voce ---------- */
+function slugifica(t){
+  return t.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g,"")
+    .replace(/[\u2019']/g,"").replace(/[^a-z0-9]+/g,"-").replace(/^-+|-+$/g,"");
+}
+(function(){
+  var visti = {};
+  VOCI.forEach(function(v){
+    var g = slugifica(v.r);
+    if(visti[g]){ visti[g]++; g = g + "-" + visti[g]; } else { visti[g] = 1; }
+    v.slug = g;
+  });
+})();
+function perSlug(g){
+  for(var k = 0; k < N; k++) if(VOCI[k].slug === g) return VOCI[k];
+  return null;
+}
+function indirizzoVoce(v){ return location.origin + location.pathname + "#" + v.slug; }
+/* Gli asterischi e i trattini bassi sono la marcatura di WhatsApp: grassetto e corsivo. */
+function testoVoce(v){
+  var g = v.g.replace(/<em>/g,"_").replace(/<\/em>/g,"_").replace(/<[^>]+>/g,"");
+  var righe = ["*" + v.r + "*, invece di " + v.v, "", g];
+  if(v.var.length) righe.push("", "Varianti: " + v.var.join(", "));
+  righe.push("", "Registro: " + LASTRE[v.l].nome.toLowerCase(), indirizzoVoce(v));
+  return righe.join("\n");
+}
+function negliAppunti(testo, fatto){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(testo).then(fatto, fatto);
+  } else {
+    var ta = document.createElement("textarea");
+    ta.value = testo; ta.setAttribute("readonly","");
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta); ta.select();
+    try{ document.execCommand("copy"); }catch(e){}
+    document.body.removeChild(ta); fatto();
+  }
+}
+function segnalaCopia(el, etichetta){
+  el.textContent = "copiato";
+  clearTimeout(el._t);
+  el._t = setTimeout(function(){ el.textContent = etichetta; }, 1900);
+}
 var $ = function(id){ return document.getElementById(id); };
 document.querySelectorAll("#conto-testata").forEach(function(e){ e.textContent = N; });
 $("conto-corpus").textContent = N + " voci";
@@ -644,33 +712,23 @@ function tira(){
 }
 $("tira").addEventListener("click", tira);
 $("copia").addEventListener("click", function(){
-  var t = $("formula").textContent, b = $("copia");
-  var fatto = function(){
+  var b = $("copia");
+  negliAppunti($("formula").textContent, function(){
     b.textContent = "Copiato";
     clearTimeout(b._t);
     b._t = setTimeout(function(){ b.textContent = "Copia per WhatsApp"; }, 2000);
-  };
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(t).then(fatto, fatto);
-  } else {
-    var ta = document.createElement("textarea");
-    ta.value = t; ta.setAttribute("readonly","");
-    ta.style.position = "fixed"; ta.style.opacity = "0";
-    document.body.appendChild(ta); ta.select();
-    try{ document.execCommand("copy"); }catch(e){}
-    document.body.removeChild(ta); fatto();
-  }
+  });
 });
 tira();
 
 /* ---------- interruttore ---------- */
 var vistaMazzo = $("vista-mazzo"), vistaDiz = $("vista-dizionario");
-function mostra(quale){
+function mostra(quale, mettiFuoco){
   var m = quale === "mazzo";
   vistaMazzo.hidden = !m; vistaDiz.hidden = m;
   $("v-mazzo").setAttribute("aria-pressed", String(m));
   $("v-dizionario").setAttribute("aria-pressed", String(!m));
-  if(!m) setTimeout(function(){ $("cerca").focus({preventScroll:true}); }, 30);
+  if(!m && mettiFuoco !== false) setTimeout(function(){ $("cerca").focus({preventScroll:true}); }, 30);
 }
 $("v-mazzo").addEventListener("click", function(){ mostra("mazzo"); });
 $("v-dizionario").addEventListener("click", function(){ mostra("dizionario"); });
@@ -729,6 +787,7 @@ function disegnaMazzo(){
         '<div style="display:flex;align-items:center;gap:8px;margin-top:11px">' +
           '<span style="width:11px;height:11px;border:1px solid var(--nero);background:'+L.ink+'"></span>' +
           '<span class="vizio" style="color:var(--grigio-2)">'+L.nome+'</span>' +
+          '<button type="button" class="copia-voce" data-slug="'+v.slug+'">copia</button>' +
         '</div>' +
         '<p class="glossa">'+v.g+'</p>' + varianti +
         '<span class="timbro" style="left:20px;'+timbroStile(opA,"var(--cyan)",-8,"")+'">arriva</span>' +
@@ -741,6 +800,7 @@ $("avanti").addEventListener("click", function(){ i = Math.min(N, i+1); dx = 0; 
 $("indietro").addEventListener("click", function(){ i = Math.max(0, i-1); dx = 0; dy = 0; disegnaMazzo(); });
 
 pista.addEventListener("pointerdown", function(e){
+  if(e.target.closest("button.copia-voce")) return;
   if(!e.target.closest('[data-carta="0"]')) return;
   x0 = e.clientX; y0 = e.clientY; trascino = true; dx = 0; dy = 0;
 });
@@ -757,6 +817,11 @@ function rilascia(){
 }
 document.addEventListener("pointerup", rilascia);
 document.addEventListener("pointercancel", rilascia);
+pista.addEventListener("click", function(e){
+  var b = e.target.closest("button.copia-voce"); if(!b) return;
+  var v = perSlug(b.dataset.slug); if(!v) return;
+  negliAppunti(testoVoce(v), function(){ segnalaCopia(b, "copia"); });
+});
 disegnaMazzo();
 
 /* ---------- dizionario ---------- */
@@ -797,15 +862,51 @@ function disegnaVoci(){
   $("voci").innerHTML = lista.map(function(o){
     var v = o.v, L = LASTRE[v.l];
     var varianti = v.var.length ? '<div class="varianti">Varianti: '+v.var.join(", ")+"</div>" : "";
-    return '<article class="voce">' +
+    return '<article class="voce" data-voce="'+v.slug+'">' +
       '<div class="cima"><span class="vizio">invece di <s>'+v.v+'</s></span>' +
-      '<span class="num">'+String(o.n+1).padStart(2,"0")+" · "+L.nome+"</span></div>" +
-      '<div class="rovescio"><span class="segno" style="background:'+L.ink+'"></span>'+v.r+"</div>" +
+      '<a class="num" href="#'+v.slug+'" title="Indirizzo di questa voce">' +
+        String(o.n+1).padStart(2,"0")+" · "+L.nome+"</a></div>" +
+      '<button type="button" class="rovescio lemma" data-slug="'+v.slug+'" ' +
+        'aria-label="Copia la voce ‘'+v.r+'’">' +
+        '<span class="segno" style="background:'+L.ink+'"></span>' +
+        '<span>'+v.r+'</span><span class="richiamo">copia</span>' +
+      "</button>" +
       '<p class="glossa">'+v.g+"</p>" + varianti + "</article>";
   }).join("");
 }
 $("cerca").addEventListener("input", function(e){ query = e.target.value; disegnaVoci(); });
+$("voci").addEventListener("click", function(e){
+  var b = e.target.closest("button.lemma"); if(!b) return;
+  var v = perSlug(b.dataset.slug); if(!v) return;
+  var marca = b.querySelector(".richiamo");
+  negliAppunti(testoVoce(v), function(){ segnalaCopia(marca, "copia"); });
+});
 disegnaVoci();
+
+/* ---------- una voce per indirizzo ---------- */
+function vaiAllaVoce(g){
+  var v = perSlug(g); if(!v) return false;
+  mostra("dizionario", false);
+  filtroAttivo = "tutte"; query = ""; $("cerca").value = "";
+  $("filtri").querySelectorAll(".filtro").forEach(function(x){
+    x.setAttribute("aria-pressed", String(x.dataset.l === "tutte"));
+  });
+  disegnaVoci();
+  var el = $("voci").querySelector('[data-voce="' + g + '"]');
+  if(!el) return true;
+  var dolce = !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  el.scrollIntoView({behavior: dolce ? "smooth" : "auto", block: "center"});
+  el.classList.add("accesa");
+  clearTimeout(vaiAllaVoce._t);
+  vaiAllaVoce._t = setTimeout(function(){ el.classList.remove("accesa"); }, 2600);
+  return true;
+}
+function daIndirizzo(){
+  if(location.hash.length < 2) return;
+  vaiAllaVoce(decodeURIComponent(location.hash.slice(1)));
+}
+window.addEventListener("hashchange", daIndirizzo);
+daIndirizzo();
 
 })();
 </script>

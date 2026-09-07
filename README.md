@@ -34,6 +34,24 @@ si aggiunge `fem:true`, così l’articolo e il rafforzativo si accordano.
 
 I contatori della testata, delle lastre e delle carte si aggiornano da soli.
 
+## Condividere una voce
+
+Ogni voce ha il suo indirizzo, costruito sul lemma: `…/#acheropita`,
+`…/#cenobita-del-talamo`. Aprendolo, la pagina passa al dizionario, azzera ricerca e
+filtri, scorre fino alla voce e la marca in magenta per qualche secondo. Gli indirizzi
+si generano da soli dal campo `r`, quindi cambiando un lemma cambia anche il suo
+indirizzo: chi avesse in giro il vecchio link cade sulla pagina intera senza errori.
+
+Toccando il lemma nel dizionario, o il richiamo `copia` sulla carta nel mazzo, finisce
+negli appunti la scheda intera: lemma, vizio sostituito, glossa, varianti, registro e
+l’indirizzo della voce. Gli asterischi e i trattini bassi del testo copiato sono la
+marcatura di WhatsApp, che li rende grassetto e corsivo; altrove restano due segni
+di troppo.
+
+L’anteprima social resta quella della pagina intera. Per avere una scheda diversa per
+ogni voce servirebbero trentacinque pagine generate, una per lemma, ognuna con i suoi
+`og:title` e `og:description`, perché il frammento dell’indirizzo al server non arriva.
+
 ## Rifare l’immagine di anteprima
 
 `og.png` è uno screenshot di una pagina costruita apposta, alle stesse misure e con gli
